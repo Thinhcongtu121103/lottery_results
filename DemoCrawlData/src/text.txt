@@ -1,0 +1,11 @@
+1. kết nốidb
+- 1.1 load txt (username, password, email )
+- 1.2 lưu biến
+- 1.3 kết nối
+2. craw file
+- 2.1 kết nối
+- 2.2 lấy dữ liệu từ các field
+- 2.3 quy trình crawl data
+3. load csv to staging
+4. transform
+5. staging to dw
