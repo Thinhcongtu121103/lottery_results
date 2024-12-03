@@ -1,3 +1,5 @@
+import os
+
 import requests
 from bs4 import BeautifulSoup
 import csv
@@ -94,15 +96,21 @@ class DataCrawler:
 
     def save_to_csv(self, date, draw_date, draw_time):
         """Lưu kết quả vào file CSV."""
-        csv_file_name = 'ket_qua_xo_so.csv'
+        folder_path = 'ket_qua_xo_so'  # Thay đổi thành tên thư mục bạn muốn
+        os.makedirs(folder_path, exist_ok=True)  # Tạo thư mục nếu chưa tồn tại
+        current_date = datetime.now().strftime('%Y%m%d')
+        csv_file_name = os.path.join(folder_path, f'ket_qua_xo_so_{current_date}.csv')
         with open(csv_file_name, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
 
-            header = ['Ngày quay xổ số', 'Giờ xổ số', 'Miền', 'Tỉnh'] + [f'G{i}' for i in range(8, 0, -1)] + ['ĐB'] + ['draw_date', 'draw_time']
+            header = ['Ngày quay xổ số', 'Giờ xổ số', 'Miền', 'Tỉnh'] + [f'G{i}' for i in range(8, 0, -1)] + ['ĐB'] + [
+                'draw_date', 'draw_time']
             writer.writerow(header)
 
             # Ghi dữ liệu cho miền Bắc
-            row = [date, self.times['Miền Bắc'], 'Miền Bắc', ''] + [self.results['Miền Bắc'].get(f'G.{i}', '') for i in range(8, 0, -1)] + [self.results['Miền Bắc'].get('ĐB', '')] + [draw_date, draw_time]
+            row = [date, self.times['Miền Bắc'], 'Miền Bắc', 'Rỗng'] + [self.results['Miền Bắc'].get(f'G.{i}', '') for i in
+                                                                    range(8, 0, -1)] + [
+                      self.results['Miền Bắc'].get('ĐB', '')] + [draw_date, draw_time]
             writer.writerow(row)
 
             # Ghi dữ liệu cho miền Nam và miền Trung
@@ -110,10 +118,13 @@ class DataCrawler:
                 if region != 'Miền Bắc':
                     for key, value in region_data.items():
                         if isinstance(value, dict):
-                            row = [date, self.times[region], region, key] + [value.get(f'G.{i}', '') for i in range(1, 9)] + [value.get('ĐB', '')] + [draw_date, draw_time]
+                            row = [date, self.times[region], region, key] + [value.get(f'G.{i}', '') for i in
+                                                                             range(8, 0, -1)] + [
+                                      value.get('ĐB', '')] + [draw_date, draw_time]
                             writer.writerow(row)
 
         print(f'Dữ liệu đã được lưu vào file {csv_file_name}.')
+
 
 # Cách sử dụng lớp DataCrawler
 if __name__ == "__main__":
