@@ -1,0 +1,6 @@
+username=root
+password=
+email=21130187@st.hcmuaf.edu.vn
+host=localhost
+port=3306
+database=staging
