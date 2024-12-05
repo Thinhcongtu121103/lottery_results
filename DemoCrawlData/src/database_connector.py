@@ -1,12 +1,14 @@
 import mysql.connector
 from mysql.connector import Error
 
+
 class DatabaseConnector:
     def __init__(self, config_file):
         self.config = self.load_config(config_file)
         self.connection = None
 
     def load_config(self, file_path):
+        """Load cấu hình từ file config."""
         config = {}
         with open(file_path, 'r') as file:
             for line in file:
@@ -45,9 +47,25 @@ class DatabaseConnector:
         else:
             print("Không có kết nối.")
 
-# Cách sử dụng lớp DatabaseConnector
+    def execute_query(self, query, values=None):
+        """Thực thi một câu lệnh SQL (INSERT, UPDATE, DELETE, SELECT)."""
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(query, values) if values else cursor.execute(query)
+            self.connection.commit()
+            if query.lower().startswith("select"):
+                return cursor.fetchall()  # Trả về kết quả truy vấn SELECT
+            else:
+                return cursor.rowcount  # Trả về số lượng bản ghi bị thay đổi
+        except Error as e:
+            print(f"Lỗi khi thực thi câu lệnh SQL: {e}")
+            self.connection.rollback()  # Rollback nếu có lỗi
+        finally:
+            cursor.close()
+
+
+# Cách sử dụng lớp DatabaseConnector với execute_query
 if __name__ == "__main__":
     db_connector = DatabaseConnector('config.txt')
     db_connector.connect()
-    db_connector.check_connection()
     db_connector.disconnect()

@@ -25,6 +25,7 @@ class DataLoader:
         cursor = conn.cursor()
 
         # Duyệt từng dòng và chèn vào bảng staging
+        record_count = 0
         for _, row in data.iterrows():
             # Thay thế NaN bằng chuỗi rỗng hoặc giá trị mặc định trước khi chèn
             row = row.fillna('')  # Hoặc thay bằng None nếu bạn muốn NULL trong SQL
@@ -48,6 +49,7 @@ class DataLoader:
             # Thực hiện câu lệnh SQL
             try:
                 cursor.execute(insert_query, data_tuple)
+                record_count += 1
             except Exception as e:
                 print(f"Lỗi khi chèn dòng: {row} - {e}")
 
@@ -57,3 +59,4 @@ class DataLoader:
         # Đóng kết nối
         cursor.close()
         print("Dữ liệu đã được load vào bảng staging.")
+        return record_count
