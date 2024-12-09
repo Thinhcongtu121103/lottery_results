@@ -1,3 +1,5 @@
+# main.py
+
 import os
 from datetime import datetime
 import uuid  # Thêm thư viện uuid để tạo id duy nhất
@@ -9,19 +11,30 @@ from data_transformer import DataTransformer
 from dw_loader import DWLoader
 from schema_setup import create_dw_schema, check_dw_exists
 from control_logger import ControlLogger
+from send_email import SendEmail  # Import class SendEmail
 
 
 def main():
+    # Biến điều khiển gửi mail
+    send_mail_status = True  # Đặt True để bật gửi email, False để tắt
+
+    # Khởi tạo đối tượng gửi email
+    email_notifier = SendEmail(
+        sender_email="thinhcongtu121103@gmail.com",
+        sender_password="hmxn qiou vros uuzm",
+        smtp_server="smtp.gmail.com",
+        smtp_port=587,
+    )
+    recipient_email = "21130187@st.hcmuaf.edu.vn"
+
     # Bước 1: Kết nối database
     print("Bước 1: Kết nối database...")
     db_connector = DatabaseConnector('config.txt')
     db_connector.connect()
     logger = ControlLogger(db_connector)
 
-    # Tạo id duy nhất cho lần chạy này
-
-    # Biến trạng thái
     current_step = None
+    log_id = None  # Biến log_id để theo dõi log
     try:
         # Ghi log ban đầu
         log_id = logger.write_log(
@@ -35,12 +48,11 @@ def main():
         print("Bước 2: Crawl dữ liệu từ web...")
         current_step = "Crawl data"
         url = 'https://xskt.com.vn/'
-        data_crawler = DataCrawler(url, logger, id=log_id)  # Truyền id duy nhất
+        data_crawler = DataCrawler(url, logger, id=log_id)
         data_crawler.crawl_data()
 
-        # Ghi log sau khi crawl dữ liệu xong
         logger.update_log(
-            id=log_id,  # Cập nhật bằng id duy nhất
+            id=log_id,
             status="RUNNING",
             last_step="Step 2: Crawl data",
             total_record=0,
@@ -54,9 +66,8 @@ def main():
         data_loader = DataLoader(db_connector, csv_path)
         total_records = data_loader.load_to_staging()
 
-        # Ghi log sau khi load dữ liệu vào staging
         logger.update_log(
-            id=log_id,  # Cập nhật bằng id duy nhất
+            id=log_id,
             status="RUNNING",
             last_step="Step 3: Load data to staging",
             total_record=total_records
@@ -68,9 +79,8 @@ def main():
         transformer = DataTransformer(db_connector, csv_path)
         transformer.transform_and_load()
 
-        # Ghi log sau khi transform dữ liệu
         logger.update_log(
-            id=log_id,  # Cập nhật bằng id duy nhất
+            id=log_id,
             status="RUNNING",
             last_step="Step 4: Transform data",
             total_record=total_records,
@@ -84,9 +94,8 @@ def main():
         dw_loader = DWLoader(db_connector)
         dw_loader.load_to_dw()
 
-        # Ghi log sau khi xử lý Data Warehouse
         logger.update_log(
-            id=log_id,  # Cập nhật bằng id duy nhất
+            id=log_id,
             status="RUNNING",
             last_step="Step 5: Process Data Warehouse",
             total_record=total_records,
@@ -94,26 +103,40 @@ def main():
 
         # Ghi log hoàn tất
         logger.update_log(
-            id=log_id,  # Cập nhật bằng id duy nhất
+            id=log_id,
             status="COMPLETED",
             last_step="COMPLETED",
             total_record=total_records,
         )
+
+        # Gửi email khi hoàn tất (nếu bật gửi mail)
+        if send_mail_status:
+            email_notifier.send_email(
+                to=recipient_email,
+                subject="ETL Process - Completed",
+                body="The entire ETL process has been successfully completed.",
+            )
         print("Quá trình ETL hoàn tất.")
     except Exception as e:
         error_message = str(e)
         print(f"Lỗi trong quá trình thực thi tại bước '{current_step}': {error_message}")
 
         # Cập nhật log lỗi với trạng thái FAILED
-        if 'log_id' in locals():
+        if log_id:
             logger.update_log(
-                id=log_id,  # Cập nhật bằng id duy nhất
+                id=log_id,
                 status="FAILED",
                 last_step=current_step,
                 total_record=0,
             )
-        else:
-            print("Không thể ghi log lỗi vì log_id chưa được khởi tạo.")
+
+        # Gửi email thông báo lỗi (nếu bật gửi mail)
+        if send_mail_status:
+            email_notifier.send_email(
+                to=recipient_email,
+                subject="ETL Process - Failed",
+                body=f"ETL process failed at step '{current_step}'. Error: {error_message}",
+            )
     finally:
         db_connector.disconnect()
 
