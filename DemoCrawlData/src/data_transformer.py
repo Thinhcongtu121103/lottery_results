@@ -16,56 +16,80 @@ class DataTransformer:
         conn = self.db_connector.connection
         cursor = conn.cursor()
 
-        # Tạo các bảng dim_region và dim_province nếu chưa có
+        # Tạo các bảng dim_region, dim_province, dim_date, và dim_time nếu chưa có
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS dim_region (region_id INT PRIMARY KEY AUTO_INCREMENT, region_name VARCHAR(50) UNIQUE)")
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS dim_province (province_id INT PRIMARY KEY AUTO_INCREMENT, province_name VARCHAR(100) UNIQUE, region_id INT, FOREIGN KEY (region_id) REFERENCES dim_region(region_id))")
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS dim_date (date_id INT PRIMARY KEY AUTO_INCREMENT, draw_date DATE UNIQUE)")
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS dim_time (time_id INT PRIMARY KEY AUTO_INCREMENT, time_period VARCHAR(20) UNIQUE)")
 
         # Load dữ liệu vào bảng dim_region
         regions = data['Miền'].dropna().unique()
         for region in regions:
             cursor.execute("INSERT IGNORE INTO dim_region (region_name) VALUES (%s)", (region,))
 
-        # Đảm bảo "Miền Bắc" luôn có region_id = 1
-        cursor.execute("SELECT region_id FROM dim_region WHERE region_name = %s", ("Miền Bắc",))
-        region_row = cursor.fetchone()
-        if not region_row:  # Nếu không có "Miền Bắc", chèn mới
-            cursor.execute("INSERT INTO dim_region (region_name) VALUES (%s)", ("Miền Bắc",))
-            region_id = 1  # Gán region_id = 1 cho "Miền Bắc"
-        else:
-            region_id = region_row[0]  # Lấy region_id nếu đã tồn tại
-
         # Load dữ liệu vào bảng dim_province
         provinces = data[['Tỉnh', 'Miền']].fillna({'Tỉnh': 'Rỗng'}).drop_duplicates()
-
-        print(provinces)
         for _, row in provinces.iterrows():
             province_value = row['Tỉnh']
             cursor.execute("SELECT region_id FROM dim_region WHERE region_name = %s", (row['Miền'],))
             region_row = cursor.fetchone()
-            print(region_row)
-            # Nếu không có region_id cho miền, và miền là "Miền Bắc", tạo region_id = 1
             if region_row:
                 region_id = region_row[0]
             else:
-                if row['Miền'] == "Miền Bắc":
-                    # Gán lại region_id là 1 cho Miền Bắc nếu không tìm thấy
-                    cursor.execute("INSERT INTO dim_region (region_name) VALUES (%s)", ("Miền Bắc",))
-                    region_id = 1
-
-                else:
-                    continue  # Bỏ qua nếu không thể tìm thấy region_id hợp lệ
-
-            # Chèn tỉnh vào dim_province với region_id
+                continue
             cursor.execute("INSERT IGNORE INTO dim_province (province_name, region_id) VALUES (%s, %s)",
                            (province_value, region_id))
-        # Lưu thay đổi và đóng cursor
+
+        # Load dữ liệu vào bảng dim_date
+        dates = data['draw_date'].dropna().unique()
+        for draw_date in dates:
+            cursor.execute("INSERT IGNORE INTO dim_date (draw_date) VALUES (%s)", (draw_date,))
+
+        def determine_time_period(time):
+            if "05:00:00" <= time <= "11:59:59":
+                return "Sáng"
+            elif "12:00:00" <= time <= "17:59:59":
+                return "Chiều"
+            elif "18:00:00" <= time <= "21:59:59":
+                return "Tối"
+            else:
+                return None
+        # Load dữ liệu vào bảng dim_time với các giá trị khung giờ duy nhất
+        draw_times = data['draw_time'].dropna().unique()
+        for draw_time in draw_times:
+            time_period = determine_time_period(draw_time)
+
+            # Bỏ qua nếu không thuộc khung giờ nào
+            if not time_period:
+                continue
+
+            # Kiểm tra xem draw_time đã tồn tại trong bảng dim_time chưa
+            cursor.execute("SELECT * FROM dim_time WHERE time_period = %s", (time_period,))
+            existing_row = cursor.fetchone()
+
+            # Nếu chưa tồn tại, chèn vào bảng
+            if not existing_row:
+                cursor.execute("INSERT INTO dim_time (time_period) VALUES (%s)", (time_period,))
         conn.commit()
         cursor.close()
 
     def transform_and_load_fact_table(self, data):
         cursor = self.db_connector.connection.cursor()
+
+        # Hàm xác định khung giờ
+        def determine_time_period(draw_time):
+            if 5 <= draw_time <= 11:  # Từ 5 giờ sáng đến 11 giờ sáng
+                return "Sáng"
+            elif 12 <= draw_time <= 17:  # Từ 12 giờ trưa đến 17 giờ chiều
+                return "Chiều"
+            elif 18 <= draw_time <= 21:  # Từ 18 giờ tối đến 21 giờ tối
+                return "Tối"
+            else:
+                return None
 
         for _, row in data.iterrows():
             # Kiểm tra và xử lý giá trị NaN trong cột 'Tỉnh' và 'Miền'
@@ -85,7 +109,32 @@ class DataTransformer:
             # Lấy province_id từ bảng dim_province
             cursor.execute("SELECT province_id FROM dim_province WHERE province_name = %s", (row['Tỉnh'],))
             province_row = cursor.fetchone()
-            province_id = province_row[0] if province_row else 0  # Gán province_id = 0 nếu không tìm thấy
+            province_id = province_row[0] if province_row else None
+
+            # Lấy date_id từ bảng dim_date
+            draw_date = row['draw_date']
+            cursor.execute("SELECT date_id FROM dim_date WHERE draw_date = %s", (draw_date,))
+            date_row = cursor.fetchone()
+            date_id = date_row[0] if date_row else None
+
+            # Xử lý draw_time (chuỗi dạng HH:MM:SS -> số giờ)
+            draw_time_str = row['draw_time']
+            try:
+                draw_hour = int(draw_time_str.split(":")[0])  # Tách và lấy giờ
+            except ValueError:
+                print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
+                continue
+
+            # Xác định khung giờ từ draw_hour
+            time_period = determine_time_period(draw_hour)
+            if not time_period:  # Bỏ qua nếu không thuộc khung giờ nào
+                print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
+                continue
+
+            # Lấy time_id từ bảng dim_time
+            cursor.execute("SELECT time_id FROM dim_time WHERE time_period = %s", (time_period,))
+            time_row = cursor.fetchone()
+            time_id = time_row[0] if time_row else None
 
             # Xử lý giá trị 'g8' cho miền Bắc và loại bỏ dấu .0 nếu có
             g8_value = row['G8']
@@ -94,24 +143,23 @@ class DataTransformer:
                 g8_value = ""  # Hoặc gán giá trị mặc định khác như "00"
             elif isinstance(g8_value, float):  # Nếu giá trị là float
                 g8_value = str(int(g8_value))  # Loại bỏ .0 và chuyển thành chuỗi
-            # Nếu cần, thêm số 0 phía trước nếu G8 có một chữ số
-            g8_value = g8_value.zfill(2)  # Ép kiểu thành int để loại bỏ .0
+            g8_value = g8_value.zfill(2)  # Thêm số 0 nếu cần
 
-            # Nếu region_id và province_id đều tồn tại, chèn dữ liệu vào bảng fact
-            if region_id is not None and province_id is not None:
+            # Nếu tất cả khóa ngoại tồn tại, chèn dữ liệu vào bảng fact_lottery_results
+            if region_id and province_id and date_id and time_id:
                 cursor.execute(
                     """
-                    INSERT INTO fact_lottery_results (draw_date, draw_time, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
+                    INSERT INTO fact_lottery_results (date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
-                        row['draw_date'], row['draw_time'], region_id, province_id,
+                        date_id, time_id, region_id, province_id,
                         g8_value, row['G7'], row['G6'], row['G5'], row['G4'],
                         row['G3'], row['G2'], row['G1'], row['ĐB']
                     )
                 )
             else:
-                print(f"Bỏ qua bản ghi do thiếu region_id hoặc province_id: {row}")
+                print(f"Bỏ qua bản ghi do thiếu khóa ngoại: {row}")
 
         # Lưu thay đổi và đóng cursor
         self.db_connector.connection.commit()

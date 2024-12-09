@@ -26,7 +26,7 @@ def main():
         # Ghi log ban đầu
         log_id = logger.write_log(
             filename="",
-            status="STARTED",
+            status="Step 1: Connect database",
             last_step="None",
             extract_time=datetime.now(),
         )
@@ -42,7 +42,7 @@ def main():
         logger.update_log(
             id=log_id,  # Cập nhật bằng id duy nhất
             status="RUNNING",
-            last_step="Step 1: Crawl data",
+            last_step="Step 2: Crawl data",
             total_record=0,
         )
 
@@ -58,7 +58,7 @@ def main():
         logger.update_log(
             id=log_id,  # Cập nhật bằng id duy nhất
             status="RUNNING",
-            last_step="Step 2: Load data to staging",
+            last_step="Step 3: Load data to staging",
             total_record=total_records
         )
 
@@ -72,7 +72,7 @@ def main():
         logger.update_log(
             id=log_id,  # Cập nhật bằng id duy nhất
             status="RUNNING",
-            last_step="Step 3: Transform data",
+            last_step="Step 4: Transform data",
             total_record=total_records,
         )
 
@@ -88,7 +88,7 @@ def main():
         logger.update_log(
             id=log_id,  # Cập nhật bằng id duy nhất
             status="RUNNING",
-            last_step="Step 4: Process Data Warehouse",
+            last_step="Step 5: Process Data Warehouse",
             total_record=total_records,
         )
 
@@ -101,14 +101,19 @@ def main():
         )
         print("Quá trình ETL hoàn tất.")
     except Exception as e:
-        # Ghi log khi xảy ra lỗi
-        logger.update_log(
-            id=0,  # Cập nhật bằng id duy nhất
-            status="FAILED",
-            last_step=current_step,
-            total_record=0,
-        )
-        print(f"Lỗi trong quá trình thực thi tại bước '{current_step}': {e}")
+        error_message = str(e)
+        print(f"Lỗi trong quá trình thực thi tại bước '{current_step}': {error_message}")
+
+        # Cập nhật log lỗi với trạng thái FAILED
+        if 'log_id' in locals():
+            logger.update_log(
+                id=log_id,  # Cập nhật bằng id duy nhất
+                status="FAILED",
+                last_step=current_step,
+                total_record=0,
+            )
+        else:
+            print("Không thể ghi log lỗi vì log_id chưa được khởi tạo.")
     finally:
         db_connector.disconnect()
 
