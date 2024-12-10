@@ -25,6 +25,8 @@ class DataTransformer:
             "CREATE TABLE IF NOT EXISTS dim_date (date_id INT PRIMARY KEY AUTO_INCREMENT, draw_date DATE UNIQUE)")
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS dim_time (time_id INT PRIMARY KEY AUTO_INCREMENT, time_period VARCHAR(20) UNIQUE)")
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS dim_date_lottery (date_lottery_id INT PRIMARY KEY AUTO_INCREMENT, date_lottery VARCHAR(20) UNIQUE)")
 
         # Load dữ liệu vào bảng dim_region
         regions = data['Miền'].dropna().unique()
@@ -48,6 +50,10 @@ class DataTransformer:
         dates = data['draw_date'].dropna().unique()
         for draw_date in dates:
             cursor.execute("INSERT IGNORE INTO dim_date (draw_date) VALUES (%s)", (draw_date,))
+
+        date_lotterys = data['Ngày quay xổ số'].dropna().unique()
+        for date_lottery in date_lotterys:
+            cursor.execute("INSERT IGNORE INTO dim_date_lottery (date_lottery) VALUES (%s)", (date_lottery,))
 
         def determine_time_period(time):
             if "05:00:00" <= time <= "11:59:59":
@@ -117,6 +123,11 @@ class DataTransformer:
             date_row = cursor.fetchone()
             date_id = date_row[0] if date_row else None
 
+            date_lottery = row['Ngày quay xổ số']
+            cursor.execute("SELECT date_lottery_id FROM dim_date_lottery WHERE date_lottery = %s", (date_lottery,))
+            date_lottery_row = cursor.fetchone()
+            date_lottery_id = date_lottery_row[0] if date_lottery_row else None
+
             # Xử lý draw_time (chuỗi dạng HH:MM:SS -> số giờ)
             draw_time_str = row['draw_time']
             try:
@@ -146,14 +157,14 @@ class DataTransformer:
             g8_value = g8_value.zfill(2)  # Thêm số 0 nếu cần
 
             # Nếu tất cả khóa ngoại tồn tại, chèn dữ liệu vào bảng fact_lottery_results
-            if region_id and province_id and date_id and time_id:
+            if region_id and province_id and date_id and time_id and date_lottery_id:
                 cursor.execute(
                     """
-                    INSERT INTO fact_lottery_results (date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO fact_lottery_results (date_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
-                        date_id, time_id, region_id, province_id,
+                        date_lottery_id, date_id, time_id, region_id, province_id,
                         g8_value, row['G7'], row['G6'], row['G5'], row['G4'],
                         row['G3'], row['G2'], row['G1'], row['ĐB']
                     )
