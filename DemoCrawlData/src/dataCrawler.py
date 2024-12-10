@@ -20,7 +20,7 @@ class DataCrawler:
             'Miền Nam': '16:15',
             'Miền Trung': '17:15'
         }
-
+    # 2.2. Phương thức tiến hành cào dữ liệu
     def crawl_data(self):
         """Gửi yêu cầu GET và phân tích cú pháp dữ liệu từ trang web."""
         try:
@@ -28,6 +28,7 @@ class DataCrawler:
             response = requests.get(self.url)
             if response.status_code == 200:
                 self.logger.update_log(self.id, status="SUCCESS", last_step="Fetch data from website", total_record=0)
+                # 2.3. Phân tích cú pháp trang web
                 self.parse_html(response.text)
             else:
                 error_message = f"Lỗi {response.status_code}: Không thể lấy dữ liệu từ trang web."
@@ -37,6 +38,7 @@ class DataCrawler:
             self.logger.update_log(self.id, status="FAILED", last_step="Crawl data", total_record=0)
             print(f"Lỗi khi crawl dữ liệu: {e}")
 
+    # 2.3. Phân tích cú pháp trang web
     def parse_html(self, html):
         """Phân tích cú pháp HTML và thu thập dữ liệu xổ số."""
         try:
@@ -62,8 +64,10 @@ class DataCrawler:
                 if table:
                     rows = table.find_all('tr')
                     if region == 'Miền Bắc':
+                        # 2.4. Tiến hành lấy dữ liệu miền bắc
                         self.process_mien_bac(rows)
                     else:
+                        # 2.5. Tiến hành lấy dữ liệu miền nam
                         self.process_mien_nam_trung(rows, region)
 
             self.logger.update_log(self.id, status="SUCCESS", last_step="Parse HTML", total_record=0)
@@ -72,6 +76,7 @@ class DataCrawler:
             self.logger.update_log(self.id, status="FAILED", last_step="Parse HTML", total_record=0)
             print(f"Lỗi khi phân tích HTML: {e}")
 
+    # 2.4. Tiến hành lấy dữ liệu miền bắc
     def process_mien_bac(self, rows):
         """Xử lý dữ liệu cho miền Bắc."""
         for row in rows[1:]:
@@ -89,6 +94,7 @@ class DataCrawler:
 
                 self.results['Miền Bắc'][giai] = formatted_numbers
 
+    # 2.5. Tiến hành lấy dữ liệu miền nam
     def process_mien_nam_trung(self, rows, region):
         """Xử lý dữ liệu cho miền Nam và miền Trung."""
         provinces = [col.get_text(strip=True) for col in rows[0].find_all('th')[1:]]

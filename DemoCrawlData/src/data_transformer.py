@@ -1,5 +1,5 @@
 import pandas as pd
-
+from sql_queries import *
 
 class DataTransformer:
     def __init__(self, db_connector, csv_path):
@@ -11,29 +11,24 @@ class DataTransformer:
         data = pd.read_csv(self.csv_path)
         return data
 
+    # 4.3. Transform bảng dim
     def transform_and_load_dim_tables(self, data):
         # Tạo kết nối
         conn = self.db_connector.connection
         cursor = conn.cursor()
 
         # Tạo các bảng dim_region, dim_province, dim_date, và dim_time nếu chưa có
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS dim_region (region_id INT PRIMARY KEY AUTO_INCREMENT, region_name VARCHAR(50) UNIQUE)")
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS dim_province (province_id INT PRIMARY KEY AUTO_INCREMENT, province_name VARCHAR(100) UNIQUE, region_id INT, FOREIGN KEY (region_id) REFERENCES dim_region(region_id))")
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS dim_date (date_id INT PRIMARY KEY AUTO_INCREMENT, draw_date DATE UNIQUE)")
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS dim_time (time_id INT PRIMARY KEY AUTO_INCREMENT, time_period VARCHAR(20) UNIQUE)")
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS dim_date_lottery (date_lottery_id INT PRIMARY KEY AUTO_INCREMENT, date_lottery VARCHAR(20) UNIQUE)")
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS dim_time_lottery (time_lottery_id INT PRIMARY KEY AUTO_INCREMENT, time_lottery VARCHAR(20) UNIQUE)")
+        cursor.execute(CREATE_DIM_REGION)
+        cursor.execute(CREATE_DIM_PROVINCE)
+        cursor.execute(CREATE_DIM_DATE)
+        cursor.execute(CREATE_DIM_TIME)
+        cursor.execute(CREATE_DIM_DATE_LOTTERY)
+        cursor.execute(CREATE_DIM_TIME_LOTTERY)
 
         # Load dữ liệu vào bảng dim_region
         regions = data['Miền'].dropna().unique()
         for region in regions:
-            cursor.execute("INSERT IGNORE INTO dim_region (region_name) VALUES (%s)", (region,))
+            cursor.execute(INSERT_DIM_REGION, (region,))
 
         # Load dữ liệu vào bảng dim_province
         provinces = data[['Tỉnh', 'Miền']].fillna({'Tỉnh': 'Rỗng'}).drop_duplicates()
@@ -45,50 +40,29 @@ class DataTransformer:
                 region_id = region_row[0]
             else:
                 continue
-            cursor.execute("INSERT IGNORE INTO dim_province (province_name, region_id) VALUES (%s, %s)",
-                           (province_value, region_id))
+            cursor.execute(INSERT_DIM_PROVINCE, (province_value,))
 
         # Load dữ liệu vào bảng dim_date
         dates = data['draw_date'].dropna().unique()
         for draw_date in dates:
-            cursor.execute("INSERT IGNORE INTO dim_date (draw_date) VALUES (%s)", (draw_date,))
+            cursor.execute(INSERT_DIM_DATE, (draw_date,))
+
+        times = data['draw_time'].dropna().unique()
+        for draw_time in times:
+            cursor.execute(INSERT_DIM_TIME, (draw_time,))
 
         date_lotterys = data['Ngày quay xổ số'].dropna().unique()
         for date_lottery in date_lotterys:
-            cursor.execute("INSERT IGNORE INTO dim_date_lottery (date_lottery) VALUES (%s)", (date_lottery,))
+            cursor.execute(INSERT_DIM_DATE_LOTTERY, (date_lottery,))
 
         time_lotterys = data['Giờ xổ số'].dropna().unique()
         for time_lottery in time_lotterys:
-            cursor.execute("INSERT IGNORE INTO dim_time_lottery (time_lottery) VALUES (%s)", (time_lottery,))
+            cursor.execute(INSERT_DIM_TIME_LOTTERY, (time_lottery,))
 
-        def determine_time_period(time):
-            if "05:00:00" <= time <= "11:59:59":
-                return "Sáng"
-            elif "12:00:00" <= time <= "17:59:59":
-                return "Chiều"
-            elif "18:00:00" <= time <= "21:59:59":
-                return "Tối"
-            else:
-                return None
-        # Load dữ liệu vào bảng dim_time với các giá trị khung giờ duy nhất
-        draw_times = data['draw_time'].dropna().unique()
-        for draw_time in draw_times:
-            time_period = determine_time_period(draw_time)
-
-            # Bỏ qua nếu không thuộc khung giờ nào
-            if not time_period:
-                continue
-
-            # Kiểm tra xem draw_time đã tồn tại trong bảng dim_time chưa
-            cursor.execute("SELECT * FROM dim_time WHERE time_period = %s", (time_period,))
-            existing_row = cursor.fetchone()
-
-            # Nếu chưa tồn tại, chèn vào bảng
-            if not existing_row:
-                cursor.execute("INSERT INTO dim_time (time_period) VALUES (%s)", (time_period,))
         conn.commit()
         cursor.close()
 
+    # 4.4. Load vào bảng fact
     def transform_and_load_fact_table(self, data):
         cursor = self.db_connector.connection.cursor()
 
@@ -139,22 +113,9 @@ class DataTransformer:
             time_lottery_row = cursor.fetchone()
             time_lottery_id = time_lottery_row[0] if time_lottery_row else None
 
-            # Xử lý draw_time (chuỗi dạng HH:MM:SS -> số giờ)
-            draw_time_str = row['draw_time']
-            try:
-                draw_hour = int(draw_time_str.split(":")[0])  # Tách và lấy giờ
-            except ValueError:
-                print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
-                continue
-
-            # Xác định khung giờ từ draw_hour
-            time_period = determine_time_period(draw_hour)
-            if not time_period:  # Bỏ qua nếu không thuộc khung giờ nào
-                print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
-                continue
-
             # Lấy time_id từ bảng dim_time
-            cursor.execute("SELECT time_id FROM dim_time WHERE time_period = %s", (time_period,))
+            draw_time = row['draw_time']
+            cursor.execute("SELECT time_id FROM dim_time WHERE draw_time = %s", (draw_time,))
             time_row = cursor.fetchone()
             time_id = time_row[0] if time_row else None
 
@@ -187,8 +148,11 @@ class DataTransformer:
         self.db_connector.connection.commit()
         cursor.close()
 
+    # 4.2. Phương thức transform và load vô table mới
     def transform_and_load(self):
         data = self.load_data()
+        # 4.3. Transform bảng dim
         self.transform_and_load_dim_tables(data)
+        # 4.4. Load vào bảng fact
         self.transform_and_load_fact_table(data)
         print("Dữ liệu đã được transform và load vào bảng staging thành công.")

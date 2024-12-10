@@ -27,7 +27,7 @@ class DWLoader:
             raise
         finally:
             cursor.close()
-
+    # 5.2. Phương thức load to DW
     def load_to_dw(self):
         # Các lệnh tạo bảng nếu chưa tồn tại
         create_dim_region = """
@@ -66,7 +66,7 @@ class DWLoader:
         create_dim_time = """
             CREATE TABLE IF NOT EXISTS dw_lottery.dim_time (
                 time_id INT PRIMARY KEY,
-                time_period TIME
+                draw_time TIME
             )
         """
         create_fact_lottery_results = """
@@ -114,8 +114,8 @@ class DWLoader:
             # Chuyển dữ liệu vào bảng dim_province
             print("Đang chuyển dữ liệu vào bảng dim_province...")
             cursor.execute("""
-                INSERT IGNORE INTO dw_lottery.dim_province (province_id, province_name, region_id)
-                SELECT DISTINCT province_id, province_name, region_id
+                INSERT IGNORE INTO dw_lottery.dim_province (province_id, province_name)
+                SELECT DISTINCT province_id, province_name
                 FROM staging.dim_province
             """)
 
@@ -146,8 +146,8 @@ class DWLoader:
             # Chuyển dữ liệu vào bảng dim_time
             print("Đang chuyển dữ liệu vào bảng dim_time...")
             cursor.execute("""
-                INSERT IGNORE INTO dw_lottery.dim_time (time_id, time_period)
-                SELECT DISTINCT time_id, time_period
+                INSERT IGNORE INTO dw_lottery.dim_time (time_id, draw_time)
+                SELECT DISTINCT time_id, draw_time
                 FROM staging.dim_time
             """)
 

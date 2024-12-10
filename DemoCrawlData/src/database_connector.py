@@ -4,9 +4,11 @@ from mysql.connector import Error
 
 class DatabaseConnector:
     def __init__(self, config_file):
+        # 1.2. Đọc file config.txt
         self.config = self.load_config(config_file)
         self.connection = None
 
+    # 1.2. Method đọc file
     def load_config(self, file_path):
         """Load cấu hình từ file config."""
         config = {}
@@ -19,6 +21,7 @@ class DatabaseConnector:
                     config[key.strip()] = value.strip()
         return config
 
+    # 1.3 Khởi tạo kết nối MySQL
     def connect(self):
         """Kết nối vào cơ sở dữ liệu MySQL."""
         try:
@@ -29,8 +32,10 @@ class DatabaseConnector:
                 password=self.config.get("password"),
                 database=self.config.get("database")
             )
+            # 1.3.1. Kết nối thành công
             if self.connection.is_connected():
                 print("Kết nối thành công đến MySQL Database")
+        # 1.3.2 Kết nối thất bại. Print lỗi
         except Error as e:
             print("Lỗi kết nối:", e)
 
