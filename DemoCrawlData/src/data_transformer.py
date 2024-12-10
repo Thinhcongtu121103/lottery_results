@@ -27,6 +27,8 @@ class DataTransformer:
             "CREATE TABLE IF NOT EXISTS dim_time (time_id INT PRIMARY KEY AUTO_INCREMENT, time_period VARCHAR(20) UNIQUE)")
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS dim_date_lottery (date_lottery_id INT PRIMARY KEY AUTO_INCREMENT, date_lottery VARCHAR(20) UNIQUE)")
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS dim_time_lottery (time_lottery_id INT PRIMARY KEY AUTO_INCREMENT, time_lottery VARCHAR(20) UNIQUE)")
 
         # Load dữ liệu vào bảng dim_region
         regions = data['Miền'].dropna().unique()
@@ -54,6 +56,10 @@ class DataTransformer:
         date_lotterys = data['Ngày quay xổ số'].dropna().unique()
         for date_lottery in date_lotterys:
             cursor.execute("INSERT IGNORE INTO dim_date_lottery (date_lottery) VALUES (%s)", (date_lottery,))
+
+        time_lotterys = data['Giờ xổ số'].dropna().unique()
+        for time_lottery in time_lotterys:
+            cursor.execute("INSERT IGNORE INTO dim_time_lottery (time_lottery) VALUES (%s)", (time_lottery,))
 
         def determine_time_period(time):
             if "05:00:00" <= time <= "11:59:59":
@@ -128,6 +134,11 @@ class DataTransformer:
             date_lottery_row = cursor.fetchone()
             date_lottery_id = date_lottery_row[0] if date_lottery_row else None
 
+            time_lottery = row['Giờ xổ số']
+            cursor.execute("SELECT time_lottery_id FROM dim_time_lottery WHERE time_lottery = %s", (time_lottery,))
+            time_lottery_row = cursor.fetchone()
+            time_lottery_id = time_lottery_row[0] if time_lottery_row else None
+
             # Xử lý draw_time (chuỗi dạng HH:MM:SS -> số giờ)
             draw_time_str = row['draw_time']
             try:
@@ -160,11 +171,11 @@ class DataTransformer:
             if region_id and province_id and date_id and time_id and date_lottery_id:
                 cursor.execute(
                     """
-                    INSERT INTO fact_lottery_results (date_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO fact_lottery_results (date_lottery_id, time_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
-                        date_lottery_id, date_id, time_id, region_id, province_id,
+                        date_lottery_id, time_lottery_id, date_id, time_id, region_id, province_id,
                         g8_value, row['G7'], row['G6'], row['G5'], row['G4'],
                         row['G3'], row['G2'], row['G1'], row['ĐB']
                     )

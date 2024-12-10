@@ -56,6 +56,13 @@ class DWLoader:
                 date_lottery VARCHAR(255)
             )
         """
+
+        create_dim_time_lottery = """
+                    CREATE TABLE IF NOT EXISTS dw_lottery.dim_time_lottery (
+                        time_lottery_id INT PRIMARY KEY,
+                        time_lottery VARCHAR(255)
+                    )
+                """
         create_dim_time = """
             CREATE TABLE IF NOT EXISTS dw_lottery.dim_time (
                 time_id INT PRIMARY KEY,
@@ -89,6 +96,7 @@ class DWLoader:
         self.ensure_table_exists("dw_lottery", "dim_province", create_dim_province)
         self.ensure_table_exists("dw_lottery", "dim_date", create_dim_date)
         self.ensure_table_exists("dw_lottery", "dim_date_lottery", create_dim_date_lottery)
+        self.ensure_table_exists("dw_lottery", "dim_time_lottery", create_dim_time_lottery)
         self.ensure_table_exists("dw_lottery", "dim_time", create_dim_time)
         self.ensure_table_exists("dw_lottery", "fact_lottery_results", create_fact_lottery_results)
 
@@ -119,13 +127,22 @@ class DWLoader:
                 FROM staging.dim_date
             """)
 
-            # Chuyển dữ liệu vào bảng dim_date
-            print("Đang chuyển dữ liệu vào bảng dim_date...")
+            # Chuyển dữ liệu vào bảng dim_date_lottery
+            print("Đang chuyển dữ liệu vào bảng dim_date_lottery...")
             cursor.execute("""
                 INSERT IGNORE INTO dw_lottery.dim_date_lottery (date_lottery_id, date_lottery)
                 SELECT DISTINCT date_lottery_id, date_lottery
                 FROM staging.dim_date_lottery
                         """)
+
+            # Chuyển dữ liệu vào bảng dim_time_lottery
+            print("Đang chuyển dữ liệu vào bảng dim_time_lottery...")
+            cursor.execute("""
+                            INSERT IGNORE INTO dw_lottery.dim_time_lottery (time_lottery_id, time_lottery)
+                            SELECT DISTINCT time_lottery_id, time_lottery
+                            FROM staging.dim_time_lottery
+                                    """)
+
             # Chuyển dữ liệu vào bảng dim_time
             print("Đang chuyển dữ liệu vào bảng dim_time...")
             cursor.execute("""
@@ -137,8 +154,8 @@ class DWLoader:
             # Chuyển dữ liệu vào bảng fact_lottery_results
             print("Đang chuyển dữ liệu vào bảng fact_lottery_results...")
             cursor.execute("""
-                INSERT INTO dw_lottery.fact_lottery_results (date_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
-                SELECT date_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db
+                INSERT INTO dw_lottery.fact_lottery_results (date_lottery_id, time_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
+                SELECT date_lottery_id, time_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db
                 FROM staging.fact_lottery_results
             """)
 
