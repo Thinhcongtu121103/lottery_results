@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kết quả xổ số</title>
+</head>
+<body>
+    <h1>Kết quả xổ số</h1>
+    <table border="1">
+        <tr>
+            <th>Ngày xổ</th>
+            <th>Thời gian</th>
+            <th>Vùng</th>
+            <th>Tỉnh</th>
+            <th>Giải 8</th>
+            <th>Giải 7</th>
+            <th>Giải 6</th>
+            <th>Giải 5</th>
+            <th>Giải 4</th>
+            <th>Giải 3</th>
+            <th>Giải 2</th>
+            <th>Giải 1</th>
+            <th>Giải đặc biệt</th>
+        </tr>
+        {% for row in results %}
+        <tr>
+            {% for col in row %}
+            <td>{{ col }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

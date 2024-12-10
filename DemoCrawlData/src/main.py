@@ -16,7 +16,7 @@ from send_email import SendEmail  # Import class SendEmail
 
 def main():
     # Biến điều khiển gửi mail
-    send_mail_status = True  # Đặt True để bật gửi email, False để tắt
+    send_mail_status = False  # Đặt True để bật gửi email, False để tắt
 
     # Khởi tạo đối tượng gửi email
     email_notifier = SendEmail(
