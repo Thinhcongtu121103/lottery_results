@@ -53,6 +53,10 @@ class DataTransformer:
         for draw_date in dates:
             cursor.execute("INSERT IGNORE INTO dim_date (draw_date) VALUES (%s)", (draw_date,))
 
+        times = data['draw_time'].dropna().unique()
+        for draw_time in times:
+            cursor.execute("INSERT IGNORE INTO dim_time (draw_time) VALUES (%s)", (draw_time,))
+
         date_lotterys = data['Ngày quay xổ số'].dropna().unique()
         for date_lottery in date_lotterys:
             cursor.execute("INSERT IGNORE INTO dim_date_lottery (date_lottery) VALUES (%s)", (date_lottery,))
@@ -61,31 +65,31 @@ class DataTransformer:
         for time_lottery in time_lotterys:
             cursor.execute("INSERT IGNORE INTO dim_time_lottery (time_lottery) VALUES (%s)", (time_lottery,))
 
-        def determine_time_period(time):
-            if "05:00:00" <= time <= "11:59:59":
-                return "Sáng"
-            elif "12:00:00" <= time <= "17:59:59":
-                return "Chiều"
-            elif "18:00:00" <= time <= "21:59:59":
-                return "Tối"
-            else:
-                return None
-        # Load dữ liệu vào bảng dim_time với các giá trị khung giờ duy nhất
-        draw_times = data['draw_time'].dropna().unique()
-        for draw_time in draw_times:
-            time_period = determine_time_period(draw_time)
-
-            # Bỏ qua nếu không thuộc khung giờ nào
-            if not time_period:
-                continue
-
-            # Kiểm tra xem draw_time đã tồn tại trong bảng dim_time chưa
-            cursor.execute("SELECT * FROM dim_time WHERE time_period = %s", (time_period,))
-            existing_row = cursor.fetchone()
-
-            # Nếu chưa tồn tại, chèn vào bảng
-            if not existing_row:
-                cursor.execute("INSERT INTO dim_time (time_period) VALUES (%s)", (time_period,))
+        # def determine_time_period(time):
+        #     if "05:00:00" <= time <= "11:59:59":
+        #         return "Sáng"
+        #     elif "12:00:00" <= time <= "17:59:59":
+        #         return "Chiều"
+        #     elif "18:00:00" <= time <= "21:59:59":
+        #         return "Tối"
+        #     else:
+        #         return None
+        # # Load dữ liệu vào bảng dim_time với các giá trị khung giờ duy nhất
+        # draw_times = data['draw_time'].dropna().unique()
+        # for draw_time in draw_times:
+        #     time_period = determine_time_period(draw_time)
+        #
+        #     # Bỏ qua nếu không thuộc khung giờ nào
+        #     if not time_period:
+        #         continue
+        #
+        #     # Kiểm tra xem draw_time đã tồn tại trong bảng dim_time chưa
+        #     cursor.execute("SELECT * FROM dim_time WHERE time_period = %s", (time_period,))
+        #     existing_row = cursor.fetchone()
+        #
+        #     # Nếu chưa tồn tại, chèn vào bảng
+        #     if not existing_row:
+        #         cursor.execute("INSERT INTO dim_time (time_period) VALUES (%s)", (time_period,))
         conn.commit()
         cursor.close()
 
@@ -139,22 +143,23 @@ class DataTransformer:
             time_lottery_row = cursor.fetchone()
             time_lottery_id = time_lottery_row[0] if time_lottery_row else None
 
-            # Xử lý draw_time (chuỗi dạng HH:MM:SS -> số giờ)
-            draw_time_str = row['draw_time']
-            try:
-                draw_hour = int(draw_time_str.split(":")[0])  # Tách và lấy giờ
-            except ValueError:
-                print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
-                continue
-
-            # Xác định khung giờ từ draw_hour
-            time_period = determine_time_period(draw_hour)
-            if not time_period:  # Bỏ qua nếu không thuộc khung giờ nào
-                print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
-                continue
+            # # Xử lý draw_time (chuỗi dạng HH:MM:SS -> số giờ)
+            # draw_time_str = row['draw_time']
+            # try:
+            #     draw_hour = int(draw_time_str.split(":")[0])  # Tách và lấy giờ
+            # except ValueError:
+            #     print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
+            #     continue
+            #
+            # # Xác định khung giờ từ draw_hour
+            # time_period = determine_time_period(draw_hour)
+            # if not time_period:  # Bỏ qua nếu không thuộc khung giờ nào
+            #     print(f"Bỏ qua bản ghi do draw_time không hợp lệ: {row}")
+            #     continue
 
             # Lấy time_id từ bảng dim_time
-            cursor.execute("SELECT time_id FROM dim_time WHERE time_period = %s", (time_period,))
+            draw_time = row['draw_time']
+            cursor.execute("SELECT time_id FROM dim_time WHERE draw_time = %s", (draw_time,))
             time_row = cursor.fetchone()
             time_id = time_row[0] if time_row else None
 

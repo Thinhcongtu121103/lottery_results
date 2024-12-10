@@ -66,7 +66,7 @@ class DWLoader:
         create_dim_time = """
             CREATE TABLE IF NOT EXISTS dw_lottery.dim_time (
                 time_id INT PRIMARY KEY,
-                time_period TIME
+                draw_time TIME
             )
         """
         create_fact_lottery_results = """
@@ -146,8 +146,8 @@ class DWLoader:
             # Chuyển dữ liệu vào bảng dim_time
             print("Đang chuyển dữ liệu vào bảng dim_time...")
             cursor.execute("""
-                INSERT IGNORE INTO dw_lottery.dim_time (time_id, time_period)
-                SELECT DISTINCT time_id, time_period
+                INSERT IGNORE INTO dw_lottery.dim_time (time_id, draw_time)
+                SELECT DISTINCT time_id, draw_time
                 FROM staging.dim_time
             """)
 
