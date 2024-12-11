@@ -18,46 +18,41 @@ class DataTransformer:
         cursor = conn.cursor()
 
         # Tạo các bảng dim_region, dim_province, dim_date, và dim_time nếu chưa có
-        cursor.execute(CREATE_DIM_REGION)
-        cursor.execute(CREATE_DIM_PROVINCE)
-        cursor.execute(CREATE_DIM_DATE)
-        cursor.execute(CREATE_DIM_TIME)
-        cursor.execute(CREATE_DIM_DATE_LOTTERY)
-        cursor.execute(CREATE_DIM_TIME_LOTTERY)
+        cursor.callproc('create_dim_tables')
 
         # Load dữ liệu vào bảng dim_region
         regions = data['Miền'].dropna().unique()
         for region in regions:
-            cursor.execute(INSERT_DIM_REGION, (region,))
+            cursor.callproc('InsertDimRegion',(region,))
 
         # Load dữ liệu vào bảng dim_province
         provinces = data[['Tỉnh', 'Miền']].fillna({'Tỉnh': 'Rỗng'}).drop_duplicates()
         for _, row in provinces.iterrows():
             province_value = row['Tỉnh']
-            cursor.execute("SELECT region_id FROM dim_region WHERE region_name = %s", (row['Miền'],))
-            region_row = cursor.fetchone()
-            if region_row:
-                region_id = region_row[0]
-            else:
-                continue
-            cursor.execute(INSERT_DIM_PROVINCE, (province_value,))
+            # cursor.execute("SELECT region_id FROM dim_region WHERE region_name = %s", (row['Miền'],))
+            # region_row = cursor.fetchone()
+            # if region_row:
+            #     region_id = region_row[0]
+            # else:
+            #     continue
+            cursor.callproc('InsertDimProvince',(province_value,))
 
         # Load dữ liệu vào bảng dim_date
         dates = data['draw_date'].dropna().unique()
         for draw_date in dates:
-            cursor.execute(INSERT_DIM_DATE, (draw_date,))
+            cursor.callproc('InsertDimDate', (draw_date,))
 
         times = data['draw_time'].dropna().unique()
         for draw_time in times:
-            cursor.execute(INSERT_DIM_TIME, (draw_time,))
+            cursor.callproc('InsertDimTime', (draw_time,))
 
         date_lotterys = data['Ngày quay xổ số'].dropna().unique()
         for date_lottery in date_lotterys:
-            cursor.execute(INSERT_DIM_DATE_LOTTERY, (date_lottery,))
+            cursor.callproc('InsertDimDateLottery', (date_lottery,))
 
         time_lotterys = data['Giờ xổ số'].dropna().unique()
         for time_lottery in time_lotterys:
-            cursor.execute(INSERT_DIM_TIME_LOTTERY, (time_lottery,))
+            cursor.callproc('InsertDimTimeLottery', (time_lottery,))
 
         conn.commit()
         cursor.close()
@@ -65,7 +60,7 @@ class DataTransformer:
     # 4.4. Load vào bảng fact
     def transform_and_load_fact_table(self, data):
         cursor = self.db_connector.connection.cursor()
-
+        cursor.callproc('DeleteFromFactLotteryResults')
         # Hàm xác định khung giờ
         def determine_time_period(draw_time):
             if 5 <= draw_time <= 11:  # Từ 5 giờ sáng đến 11 giờ sáng
@@ -87,15 +82,35 @@ class DataTransformer:
                 print(f"Bỏ qua bản ghi do thiếu giá trị Miền: {row}")
                 continue
 
-            # Lấy region_id từ bảng dim_region
-            cursor.execute("SELECT region_id FROM dim_region WHERE region_name = %s", (row['Miền'],))
-            region_row = cursor.fetchone()
-            region_id = region_row[0] if region_row else None
+            region_id = 0
 
+            # Truyền tham số dưới dạng tuple
+            cursor.callproc('GetRegionIDByName', (row['Miền'],))  # Tuple chứa tham số
+
+            # Lấy kết quả trả về từ stored procedure
+            for result in cursor.stored_results():
+                region_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
+                if region_row:
+                    region_id = region_row[0]  # region_row[0] chứa giá trị region_id
+                    print(region_id)  # In ra giá trị của region_id (ví dụ: 1)
+                else:
+                    print("Không tìm thấy region_id.")
             # Lấy province_id từ bảng dim_province
             cursor.execute("SELECT province_id FROM dim_province WHERE province_name = %s", (row['Tỉnh'],))
             province_row = cursor.fetchone()
-            province_id = province_row[0] if province_row else None
+            province_id = province_row[0] if province_row else Noneregion_id = 0
+
+            # Truyền tham số dưới dạng tuple
+            cursor.callproc('GetRegionIDByName', (row['Miền'],))  # Tuple chứa tham số
+
+            # Lấy kết quả trả về từ stored procedure
+            for result in cursor.stored_results():
+                region_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
+                if region_row:
+                    region_id = region_row[0]  # region_row[0] chứa giá trị region_id
+                    print(region_id)  # In ra giá trị của region_id (ví dụ: 1)
+                else:
+                    print("Không tìm thấy region_id.")
 
             # Lấy date_id từ bảng dim_date
             draw_date = row['draw_date']

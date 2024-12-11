@@ -1,5 +1,15 @@
 # sql_queries.py
+# Data loader to Staging
+LS_DELETE_QUERY = """
+    DELETE FROM lottery_results
+"""
 
+LS_INSERT_QUERY = """
+    INSERT INTO lottery_results (ngay_quay_xo_so, gio_xo_so, mien, tinh, g8, g7, g6, g5, g4, g3, g2, g1, db, draw_date, draw_time)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+"""
+
+# DataTransform
 CREATE_DIM_REGION = """
 CREATE TABLE IF NOT EXISTS dim_region (
     region_id INT PRIMARY KEY AUTO_INCREMENT,

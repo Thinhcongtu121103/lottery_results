@@ -24,25 +24,25 @@ class DataCrawler:
     def crawl_data(self):
         """Gửi yêu cầu GET và phân tích cú pháp dữ liệu từ trang web."""
         try:
-            self.logger.update_log(self.id, status="IN_PROGRESS", last_step="Crawl data",  total_record=0)
+            self.logger.update_log(self.id, filename="", status="IN_PROGRESS", last_step="Crawl data",  total_record=0)
             response = requests.get(self.url)
             if response.status_code == 200:
-                self.logger.update_log(self.id, status="SUCCESS", last_step="Fetch data from website", total_record=0)
+                self.logger.update_log(self.id, filename="", status="SUCCESS", last_step="Fetch data from website", total_record=0)
                 # 2.3. Phân tích cú pháp trang web
                 self.parse_html(response.text)
             else:
                 error_message = f"Lỗi {response.status_code}: Không thể lấy dữ liệu từ trang web."
-                self.logger.update_log(self.id, status="FAILED", last_step="Crawl data", total_record=0)
+                self.logger.update_log(self.id, filename="", status="FAILED", last_step="Crawl data", total_record=0)
                 print(error_message)
         except Exception as e:
-            self.logger.update_log(self.id, status="FAILED", last_step="Crawl data", total_record=0)
+            self.logger.update_log(self.id, filename="", status="FAILED", last_step="Crawl data", total_record=0)
             print(f"Lỗi khi crawl dữ liệu: {e}")
 
     # 2.3. Phân tích cú pháp trang web
     def parse_html(self, html):
         """Phân tích cú pháp HTML và thu thập dữ liệu xổ số."""
         try:
-            self.logger.update_log(self.id, status="IN_PROGRESS", last_step="Parse HTML", total_record=0)
+            self.logger.update_log(self.id, filename="", status="IN_PROGRESS", last_step="Parse HTML", total_record=0)
             soup = BeautifulSoup(html, 'html.parser')
             now = datetime.now()
             draw_date = now.strftime('%Y-%m-%d')
@@ -70,10 +70,10 @@ class DataCrawler:
                         # 2.5. Tiến hành lấy dữ liệu miền nam
                         self.process_mien_nam_trung(rows, region)
 
-            self.logger.update_log(self.id, status="SUCCESS", last_step="Parse HTML", total_record=0)
+            self.logger.update_log(self.id, filename="", status="SUCCESS", last_step="Parse HTML", total_record=0)
             self.save_to_csv(date, draw_date, draw_time)
         except Exception as e:
-            self.logger.update_log(self.id, status="FAILED", last_step="Parse HTML", total_record=0)
+            self.logger.update_log(self.id, filename="", status="FAILED", last_step="Parse HTML", total_record=0)
             print(f"Lỗi khi phân tích HTML: {e}")
 
     # 2.4. Tiến hành lấy dữ liệu miền bắc
@@ -118,7 +118,7 @@ class DataCrawler:
     def save_to_csv(self, date, draw_date, draw_time):
         """Lưu kết quả vào file CSV."""
         try:
-            self.logger.update_log(self.id, status="IN_PROGRESS", last_step="Save to CSV", total_record=0)
+            self.logger.update_log(self.id, filename="", status="IN_PROGRESS", last_step="Save to CSV", total_record=0)
             folder_path = 'ket_qua_xo_so'
             os.makedirs(folder_path, exist_ok=True)
             current_date = datetime.now().strftime('%Y%m%d')
@@ -146,8 +146,8 @@ class DataCrawler:
                                           value.get('ĐB', '')] + [draw_date, draw_time]
                                 writer.writerow(row)
 
-            self.logger.update_log(self.id, status="SUCCESS", last_step="Save to CSV", total_record=0)
+            self.logger.update_log(self.id, filename="", status="SUCCESS", last_step="Save to CSV", total_record=0)
             print(f'Dữ liệu đã được lưu vào file {csv_file_name}.')
         except Exception as e:
-            self.logger.update_log(self.id, status="FAILED", last_step="Save to CSV", total_record=0)
+            self.logger.update_log(self.id, filename="", status="FAILED", last_step="Save to CSV", total_record=0)
             print(f"Lỗi khi lưu dữ liệu vào CSV: {e}")
