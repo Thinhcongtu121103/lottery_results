@@ -175,11 +175,8 @@ class DataTransformer:
 
             # Nếu tất cả khóa ngoại tồn tại, chèn dữ liệu vào bảng fact_lottery_results
             if region_id and province_id and date_id and time_id and date_lottery_id:
-                cursor.execute(
-                    """
-                    INSERT INTO fact_lottery_results (date_lottery_id, time_lottery_id, date_id, time_id, region_id, province_id, g8, g7, g6, g5, g4, g3, g2, g1, db)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
+                cursor.callproc(
+                    'InsertFactLotteryResult',
                     (
                         date_lottery_id, time_lottery_id, date_id, time_id, region_id, province_id,
                         g8_value, row['G7'], row['G6'], row['G5'], row['G4'],
