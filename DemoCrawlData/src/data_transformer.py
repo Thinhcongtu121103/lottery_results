@@ -95,44 +95,74 @@ class DataTransformer:
                     print(region_id)  # In ra giá trị của region_id (ví dụ: 1)
                 else:
                     print("Không tìm thấy region_id.")
-            # Lấy province_id từ bảng dim_province
-            cursor.execute("SELECT province_id FROM dim_province WHERE province_name = %s", (row['Tỉnh'],))
-            province_row = cursor.fetchone()
-            province_id = province_row[0] if province_row else Noneregion_id = 0
 
+            # Lấy province_id từ bảng dim_province
+            province_id = 0
             # Truyền tham số dưới dạng tuple
-            cursor.callproc('GetRegionIDByName', (row['Miền'],))  # Tuple chứa tham số
+            cursor.callproc('GetProvinceIDByName', (row['Tỉnh'],))  # Tuple chứa tham số
 
             # Lấy kết quả trả về từ stored procedure
             for result in cursor.stored_results():
-                region_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
-                if region_row:
-                    region_id = region_row[0]  # region_row[0] chứa giá trị region_id
-                    print(region_id)  # In ra giá trị của region_id (ví dụ: 1)
+                province_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
+                if province_row:
+                    province_id = province_row[0]  # region_row[0] chứa giá trị region_id
+                    print(province_id)  # In ra giá trị của region_id (ví dụ: 1)
                 else:
-                    print("Không tìm thấy region_id.")
+                    print("Không tìm thấy province_id.")
 
             # Lấy date_id từ bảng dim_date
-            draw_date = row['draw_date']
-            cursor.execute("SELECT date_id FROM dim_date WHERE draw_date = %s", (draw_date,))
-            date_row = cursor.fetchone()
-            date_id = date_row[0] if date_row else None
+            date_id = 0
+            # Truyền tham số dưới dạng tuple
+            cursor.callproc('GetDateIDByName', (row['draw_date'],))  # Tuple chứa tham số
 
-            date_lottery = row['Ngày quay xổ số']
-            cursor.execute("SELECT date_lottery_id FROM dim_date_lottery WHERE date_lottery = %s", (date_lottery,))
-            date_lottery_row = cursor.fetchone()
-            date_lottery_id = date_lottery_row[0] if date_lottery_row else None
+            # Lấy kết quả trả về từ stored procedure
+            for result in cursor.stored_results():
+                date_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
+                if date_row:
+                    date_id = date_row[0]  # region_row[0] chứa giá trị region_id
+                    print(date_id)  # In ra giá trị của region_id (ví dụ: 1)
+                else:
+                    print("Không tìm thấy date_id.")
 
-            time_lottery = row['Giờ xổ số']
-            cursor.execute("SELECT time_lottery_id FROM dim_time_lottery WHERE time_lottery = %s", (time_lottery,))
-            time_lottery_row = cursor.fetchone()
-            time_lottery_id = time_lottery_row[0] if time_lottery_row else None
+            date_lottery_id = 0
+            # Truyền tham số dưới dạng tuple
+            cursor.callproc('GetDateLotteryIDByName', (row['Ngày quay xổ số'],))  # Tuple chứa tham số
+
+            # Lấy kết quả trả về từ stored procedure
+            for result in cursor.stored_results():
+                date_lottery_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
+                if date_lottery_row:
+                    date_lottery_id = date_lottery_row[0]  # region_row[0] chứa giá trị region_id
+                    print(date_lottery_id)  # In ra giá trị của region_id (ví dụ: 1)
+                else:
+                    print("Không tìm thấy date_lottery_id.")
+
+            time_lottery_id = 0
+            # Truyền tham số dưới dạng tuple
+            cursor.callproc('GetTimeLotteryIDByName', (row['Giờ xổ số'],))  # Tuple chứa tham số
+
+            # Lấy kết quả trả về từ stored procedure
+            for result in cursor.stored_results():
+                time_lottery_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
+                if time_lottery_row:
+                    time_lottery_id = time_lottery_row[0]  # region_row[0] chứa giá trị region_id
+                    print(time_lottery_id)  # In ra giá trị của region_id (ví dụ: 1)
+                else:
+                    print("Không tìm thấy time_lottery_id.")
 
             # Lấy time_id từ bảng dim_time
-            draw_time = row['draw_time']
-            cursor.execute("SELECT time_id FROM dim_time WHERE draw_time = %s", (draw_time,))
-            time_row = cursor.fetchone()
-            time_id = time_row[0] if time_row else None
+            time_id = 0
+            # Truyền tham số dưới dạng tuple
+            cursor.callproc('GetTimeIDByName', (row['draw_time'],))  # Tuple chứa tham số
+
+            # Lấy kết quả trả về từ stored procedure
+            for result in cursor.stored_results():
+                time_row = result.fetchone()  # Lấy dòng đầu tiên của kết quả trả về
+                if time_row:
+                    time_id = time_row[0]  # region_row[0] chứa giá trị region_id
+                    print(time_id)  # In ra giá trị của region_id (ví dụ: 1)
+                else:
+                    print("Không tìm thấy time_id.")
 
             # Xử lý giá trị 'g8' cho miền Bắc và loại bỏ dấu .0 nếu có
             g8_value = row['G8']
