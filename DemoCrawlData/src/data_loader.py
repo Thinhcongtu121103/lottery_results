@@ -1,21 +1,20 @@
 import pandas as pd
-from sql_producer import SQLProducer
+
+from src import sql_queries
+
 
 class DataLoader:
-    def __init__(self, db_connector, csv_path, sql_folder):
+    def __init__(self, db_connector, csv_path):
         """
-        Khởi tạo DataLoader với đối tượng kết nối database, đường dẫn đến file CSV
-        và thư mục chứa các file SQL.
+        Khởi tạo DataLoader với đối tượng kết nối database và đường dẫn đến file CSV.
 
         Args:
             db_connector: Đối tượng DatabaseConnector để kết nối với cơ sở dữ liệu.
             csv_path (str): Đường dẫn đến file CSV chứa dữ liệu cần load.
-            sql_folder (str): Đường dẫn đến thư mục chứa các file SQL.
         """
-        self.db_connector = db_connector
-        self.csv_path = csv_path
-        self.sql_producer = SQLProducer(sql_folder)
-        self.sql_producer.load_queries("queries.sql")  # Load file SQL
+        self.db_connector = db_connector  # Đối tượng kết nối cơ sở dữ liệu
+        self.csv_path = csv_path  # Đường dẫn file CSV
+
     # 3.2. Phương thức load to staging
     def load_to_staging(self):
         """
@@ -27,47 +26,40 @@ class DataLoader:
         # Kết nối đến database
         conn = self.db_connector.connection
         cursor = conn.cursor()
+        cursor.execute(sql_queries.LS_DELETE_QUERY)
 
-        # Lấy câu lệnh SQL
-        insert_query = self.sql_producer.get_query("insert_lottery_results")
-
-        # Duyệt từng dòng và chèn vào bảng staging
+        # Duyệt từng dòng và gọi stored procedure để chèn vào bảng staging
         record_count = 0
         for _, row in data.iterrows():
-            row = row.fillna('')  # Thay thế NaN bằng chuỗi rỗng hoặc None nếu cần
+            # Thay thế NaN bằng chuỗi rỗng hoặc giá trị mặc định trước khi chèn
+            row = row.fillna('')  # Hoặc thay bằng None nếu bạn muốn NULL trong SQL
             g8_value = row['G8']
             if isinstance(g8_value, float):
                 g8_value = str(int(g8_value))  # Loại bỏ .0 và chuyển thành chuỗi
-            g8_value = g8_value.zfill(2)  # Thêm số 0 phía trước nếu cần
+            # Nếu cần, thêm số 0 phía trước nếu G8 có một chữ số
+            g8_value = g8_value.zfill(2)
 
-            # Dữ liệu cho câu lệnh SQL
-            data_dict = {
-                "ngay_quay_xo_so": row['Ngày quay xổ số'],
-                "gio_xo_so": row['Giờ xổ số'],
-                "mien": row['Miền'],
-                "tinh": row['Tỉnh'],
-                "g8": g8_value,
-                "g7": row['G7'],
-                "g6": row['G6'],
-                "g5": row['G5'],
-                "g4": row['G4'],
-                "g3": row['G3'],
-                "g2": row['G2'],
-                "g1": row['G1'],
-                "db": row['ĐB'],
-                "draw_date": row['draw_date'],
-                "draw_time": row['draw_time'],
-            }
+            # Dữ liệu tương ứng với từng cột trong bảng
+            data_tuple = (
+                row['Ngày quay xổ số'], row['Giờ xổ số'], row['Miền'], row['Tỉnh'],
+                g8_value, row['G7'], row['G6'], row['G5'], row['G4'], row['G3'],
+                row['G2'], row['G1'], row['ĐB'], row['draw_date'], row['draw_time']
+            )
 
-            # Thực hiện câu lệnh SQL
+            # Thực hiện gọi stored procedure
             try:
-                cursor.execute(insert_query, data_dict)
+                cursor.callproc(
+                    'LS_INSERT_QUERY',  # Tên của stored procedure
+                    data_tuple  # Tham số tương ứng
+                )
                 record_count += 1
             except Exception as e:
-                print(f"Lỗi khi chèn dòng: {row} - {e}")
+                print(f"Lỗi khi gọi stored procedure với dòng: {row} - {e}")
 
-        # Commit và đóng kết nối
+        # Commit các thay đổi
         conn.commit()
+
+        # Đóng kết nối
         cursor.close()
-        print(f"Dữ liệu đã được load vào bảng staging: {record_count} dòng.")
+        print("Dữ liệu đã được load vào bảng staging.")
         return record_count

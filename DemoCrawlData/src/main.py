@@ -60,6 +60,7 @@ def main():
 
         logger.update_log(
             id=log_id,
+            filename="",
             status="RUNNING",
             last_step="Step 2: Crawl data",
             total_record=0,
@@ -72,12 +73,13 @@ def main():
         current_date = datetime.now().strftime('%Y%m%d')
         csv_path = f'ket_qua_xo_so/ket_qua_xo_so_{current_date}.csv'
         # 3.1. Khởi tạo class DataLoader
-        data_loader = DataLoader(db_connector, csv_path, 'sql_queries')
+        data_loader = DataLoader(db_connector, csv_path)
         # 3.2. Phương thức load to staging
         total_records = data_loader.load_to_staging()
 
         logger.update_log(
             id=log_id,
+            filename=csv_path,
             status="RUNNING",
             last_step="Step 3: Load data to staging",
             total_record=total_records
@@ -94,6 +96,7 @@ def main():
 
         logger.update_log(
             id=log_id,
+            filename=csv_path,
             status="RUNNING",
             last_step="Step 4: Transform data",
             total_record=total_records,
@@ -112,6 +115,7 @@ def main():
 
         logger.update_log(
             id=log_id,
+            filename=csv_path,
             status="RUNNING",
             last_step="Step 5: Process Data Warehouse",
             total_record=total_records,
@@ -120,6 +124,7 @@ def main():
         # Ghi log hoàn tất
         logger.update_log(
             id=log_id,
+            filename=csv_path,
             status="COMPLETED",
             last_step="COMPLETED",
             total_record=total_records,
@@ -143,6 +148,7 @@ def main():
         if logger:
             logger.update_log(
                 id=log_id,
+                filename="",
                 status="FAILED",
                 last_step=current_step,
                 total_record=0,
