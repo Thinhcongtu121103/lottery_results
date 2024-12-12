@@ -43,9 +43,10 @@ def main():
         # Ghi log ban đầu
         log_id = logger.write_log(
             filename="",
-            status="Step 1: Connect database",
+            status="RUNNING",
             last_step="None",
             extract_time=datetime.now(),
+            total_record=0
         )
 
         # Bước 2: Crawl dữ liệu
@@ -63,7 +64,7 @@ def main():
             filename="",
             status="RUNNING",
             last_step="Step 2: Crawl data",
-            total_record=0,
+            total_record=0
         )
 
         # Bước 3: Load CSV vào bảng staging
