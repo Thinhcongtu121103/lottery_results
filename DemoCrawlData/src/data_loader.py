@@ -1,6 +1,5 @@
 import pandas as pd
 
-from src import sql_queries
 
 
 class DataLoader:
@@ -26,7 +25,7 @@ class DataLoader:
         # Kết nối đến database
         conn = self.db_connector.connection
         cursor = conn.cursor()
-        cursor.execute(sql_queries.LS_DELETE_QUERY)
+        cursor.callproc('DeleteLotteryResults')
 
         # Duyệt từng dòng và gọi stored procedure để chèn vào bảng staging
         record_count = 0

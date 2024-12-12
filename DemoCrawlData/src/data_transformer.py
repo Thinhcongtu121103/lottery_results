@@ -1,5 +1,4 @@
 import pandas as pd
-from sql_queries import *
 
 class DataTransformer:
     def __init__(self, db_connector, csv_path):
